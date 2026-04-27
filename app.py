@@ -3,6 +3,8 @@ import pandas as pd
 import joblib
 import streamlit.components.v1 as components
 import json
+import io
+from openpyxl.styles import PatternFill, Font, Alignment
 
 st.set_page_config(
     page_title="AI Supply Chain Risk Predictor",
@@ -250,14 +252,16 @@ with tab2:
         if miss:
             st.error(f"Missing columns: {miss}")
         else:
-            preds, labels = [], []
+            preds, labels, plain_labels, risk_classes = [], [], [], []
             for _, row in df_b.iterrows():
                 p = predict_one(row["shipment_time"], row["weather_condition"],
                                 row["geopolitical_event"], row["supplier_reliability"],
                                 row["transportation_mode"], row["route_risk"])
-                l, _, _ = risk_info(p)
+                l, _, cls = risk_info(p)
                 preds.append(round(p, 2))
                 labels.append(l)
+                plain_labels.append(l.split(" ", 1)[1])
+                risk_classes.append(cls)
             df_b["Predicted Delay (Days)"] = preds
             df_b["Risk Level"]             = labels
 
@@ -289,9 +293,46 @@ with tab2:
                 "Delay (Days)": preds
             }).set_index("Shipment"))
 
-            st.download_button("⬇️ Download Predictions Report",
-                               data=df_b.to_csv(index=False),
-                               file_name="predictions_report.csv", mime="text/csv")
+            df_export = df_b.copy()
+            df_export["Risk Level"] = plain_labels
+
+            buffer = io.BytesIO()
+            with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+                df_export.to_excel(writer, index=False, sheet_name="Predictions")
+                ws = writer.sheets["Predictions"]
+
+                red_fill    = PatternFill(start_color="F8B4B4", end_color="F8B4B4", fill_type="solid")
+                yellow_fill = PatternFill(start_color="FDE68A", end_color="FDE68A", fill_type="solid")
+                green_fill  = PatternFill(start_color="A7F3D0", end_color="A7F3D0", fill_type="solid")
+                fill_map    = {"danger": red_fill, "warn": yellow_fill, "ok": green_fill}
+
+                header_fill = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
+                header_font = Font(bold=True, color="FFFFFF")
+                center      = Alignment(horizontal="center", vertical="center")
+
+                for col_idx in range(1, len(df_export.columns) + 1):
+                    c = ws.cell(row=1, column=col_idx)
+                    c.fill, c.font, c.alignment = header_fill, header_font, center
+
+                risk_col = list(df_export.columns).index("Risk Level") + 1
+                for i, cls in enumerate(risk_classes, start=2):
+                    cell = ws.cell(row=i, column=risk_col)
+                    cell.fill = fill_map[cls]
+                    cell.font = Font(bold=True)
+                    cell.alignment = center
+
+                for col_letter_idx, col_name in enumerate(df_export.columns, start=1):
+                    col_letter = ws.cell(row=1, column=col_letter_idx).column_letter
+                    width = max(df_export[col_name].astype(str).map(len).max(), len(col_name)) + 4
+                    ws.column_dimensions[col_letter].width = min(width, 40)
+
+            buffer.seek(0)
+            st.download_button(
+                "⬇️ Download Predictions Report (Excel)",
+                data=buffer.getvalue(),
+                file_name="predictions_report.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
     else:
         st.markdown(f"""
         <div style="background:{CARD};border:1px solid {BDR};border-radius:14px;

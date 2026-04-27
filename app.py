@@ -36,7 +36,12 @@ st.markdown(f"""<div id="_sc_s"><style>
 #_sc_s{{display:none!important}}
 .stApp{{background:{BG}!important}}
 .main .block-container{{padding:2rem 2.5rem!important;max-width:1400px!important}}
-#MainMenu,footer,header{{visibility:hidden!important}}
+#MainMenu,footer{{visibility:hidden!important}}
+header{{background:transparent!important}}
+[data-testid="stHeader"]{{background:transparent!important}}
+[data-testid="collapsedControl"]{{display:flex!important;visibility:visible!important;opacity:1!important;color:#fff!important;background:{BLUE}!important;border-radius:8px!important;padding:8px!important;top:14px!important;left:14px!important;z-index:999999!important;box-shadow:0 2px 8px rgba(0,0,0,0.3)!important}}
+[data-testid="collapsedControl"] svg{{fill:#fff!important;color:#fff!important;width:22px!important;height:22px!important}}
+[data-testid="stSidebarCollapseButton"]{{display:flex!important;visibility:visible!important}}
 [data-testid="stSidebar"]{{background:{SIDEBAR}!important;border-right:1px solid {BDR}!important}}
 [data-testid="stSidebarContent"]{{background:{SIDEBAR}!important}}
 [data-testid="stSidebar"] label{{color:{SUB}!important;font-size:.82rem!important}}
